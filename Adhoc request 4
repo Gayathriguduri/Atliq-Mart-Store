@@ -1,0 +1,17 @@
+-----to display the isu% for each category  with rank order in diwali campaign.
+----select * from dim_campaigns;
+with cte as 
+(
+ select  
+     p.category,
+	 round((sum(f.[quantity_sold(after_promo)])- sum(f.[quantity_sold(before_promo)]))/sum(f.[quantity_sold(before_promo)])*100,2) as isu_per 
+	 
+ from fact_events$ f 
+ join dim_products p on p.product_code=f.product_code
+ where f.campaign_id='CAMP_DIW_01'
+  group by p.category
+ )
+   select 
+    *,
+    DENSE_RANK() over(order by isu_per desc) as isu_rank
+  from cte
