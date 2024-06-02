@@ -1,0 +1,30 @@
+---- To display the campaign_name and total revenue before and after promo 
+ with cte1 as
+(
+select
+     *,
+CASE
+      WHEN promo_type='50% OFF' then (0.5*base_price)
+      WHEN promo_type='25% OFF' then (base_price*(1-0.25))
+      WHEN promo_type='33% OFF' then base_price*(1-0.33)
+      WHEN promo_type='500 Cashback' then (base_price-500)
+      WHEN promo_type='BOGOF' then (0.5*base_price)
+      END  as price_after_promo
+	  from fact_events$ 
+) ,
+cte2 as
+(
+ select
+      f.*,
+      f.[quantity_sold(before_promo)]*f.base_price as total_revenue_before_promo,
+      f.[quantity_sold(after_promo)]*cte1.price_after_promo as total_revenue_after_promo
+      from fact_events$ f
+      right join cte1  on f.product_code= cte1.product_code
+)
+select
+c.campaign_name,
+concat(round(sum(cte2.total_revenue_before_promo)/1000000,2),'M') as revenue_before_promo ,
+concat(round(sum(cte2.total_revenue_after_promo)/1000000,2),'M') as revenue_after_promo from cte2
+left join dim_campaigns c on cte2.campaign_id=c.campaign_id
+group by c.campaign_name;
+
