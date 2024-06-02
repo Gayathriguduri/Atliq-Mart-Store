@@ -1,0 +1,32 @@
+-----Top 5 Products by IR_REV_PER-------
+
+with cte1 as
+(
+select
+     c.campaign_id,f.product_code,
+CASE
+      WHEN promo_type='50% OFF' then (0.5*base_price)
+      WHEN promo_type='25% OFF' then (base_price*(1-0.25))
+      WHEN promo_type='33% OFF' then base_price*(1-0.33)
+      WHEN promo_type='500 Cashback' then (base_price-500)
+      WHEN promo_type='BOGOF' then (0.5*base_price)
+      END  as price_after_promo
+	  from fact_events$ f join dim_campaigns c on f.campaign_id=c.campaign_id
+),
+cte2 as
+(
+ select
+   f.*,
+      f.[quantity_sold(before_promo)]*f.base_price as total_revenue_before_promo,
+      f.[quantity_sold(after_promo)]*cte1.price_after_promo as total_revenue_after_promo
+     from fact_events$ f
+       join cte1 on f.product_code=cte1.product_code
+)select 
+    top 5 p.product_name,p.category,
+	sum(cte2.total_revenue_after_promo)-sum(cte2.total_revenue_before_promo) as IR,
+     round((sum(cte2.total_revenue_after_promo)-sum(cte2.total_revenue_before_promo))/sum (cte2.total_revenue_before_promo)*100,2) as IR_per
+from cte2
+ right join dim_products p
+on cte2.product_code=p.product_code
+group by p.product_name,p.category
+order by IR_per desc;
